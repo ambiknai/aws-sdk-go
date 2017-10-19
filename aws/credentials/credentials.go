@@ -79,6 +79,9 @@ type Value struct {
 	// AWS Session Token
 	SessionToken string
 
+	// IBM COS Service Instance ID
+	ServiceInstanceID string
+
 	// Provider used to get credentials
 	ProviderName string
 }
@@ -180,7 +183,8 @@ type Credentials struct {
 	forceRefresh bool
 	m            sync.Mutex
 
-	provider Provider
+	provider        Provider
+	credentialsType string
 }
 
 // NewCredentials returns a pointer to a new Credentials with the provider set.
@@ -188,6 +192,15 @@ func NewCredentials(provider Provider) *Credentials {
 	return &Credentials{
 		provider:     provider,
 		forceRefresh: true,
+	}
+}
+
+// NewTypedCredentials returns a pointer to a new Credentials with a type set.
+func NewTypedCredentials(provider Provider, credentialsType string) *Credentials {
+	return &Credentials{
+		provider:        provider,
+		forceRefresh:    true,
+		credentialsType: credentialsType,
 	}
 }
 
@@ -243,4 +256,9 @@ func (c *Credentials) IsExpired() bool {
 // isExpired helper method wrapping the definition of expired credentials.
 func (c *Credentials) isExpired() bool {
 	return c.forceRefresh || c.provider.IsExpired()
+}
+
+// GetCredentialsType returns the type of the credentials.
+func (c *Credentials) GetCredentialsType() string {
+	return c.credentialsType
 }

@@ -460,10 +460,14 @@ func newClient(cfg aws.Config, handlers request.Handlers, endpoint, signingRegio
     }
 
 	// Handlers
-	svc.Handlers.Sign.PushBackNamed({{if eq .Metadata.SignatureVersion "v2"}}v2{{else}}v4{{end}}.SignRequestHandler)
-	{{- if eq .Metadata.SignatureVersion "v2" }}
-		svc.Handlers.Sign.PushBackNamed(corehandlers.BuildContentLengthHandler)
-	{{- end }}
+	if cfg.Credentials.GetCredentialsType() == "ibm-iam" {
+		svc.Handlers.Sign.PushBackNamed(ibm.SignRequestHandler)
+	} else {
+		svc.Handlers.Sign.PushBackNamed({{if eq .Metadata.SignatureVersion "v2"}}v2{{else}}v4{{end}}.SignRequestHandler)
+		{{- if eq .Metadata.SignatureVersion "v2" }}
+			svc.Handlers.Sign.PushBackNamed(corehandlers.BuildContentLengthHandler)
+		{{- end }}
+	}
 	svc.Handlers.Build.PushBackNamed({{ .ProtocolPackage }}.BuildHandler)
 	svc.Handlers.Unmarshal.PushBackNamed({{ .ProtocolPackage }}.UnmarshalHandler)
 	svc.Handlers.UnmarshalMeta.PushBackNamed({{ .ProtocolPackage }}.UnmarshalMetaHandler)
@@ -513,6 +517,7 @@ func (a *API) ServiceGoCode() string {
 	a.imports["github.com/aws/aws-sdk-go/aws/client"] = true
 	a.imports["github.com/aws/aws-sdk-go/aws/client/metadata"] = true
 	a.imports["github.com/aws/aws-sdk-go/aws/request"] = true
+	a.imports["github.com/aws/aws-sdk-go/private/signer/ibm"] = true
 	if a.Metadata.SignatureVersion == "v2" {
 		a.imports["github.com/aws/aws-sdk-go/private/signer/v2"] = true
 		a.imports["github.com/aws/aws-sdk-go/aws/corehandlers"] = true
