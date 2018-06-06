@@ -16,8 +16,8 @@ import (
 // ProviderName is the name of the credentials provider.
 const ProviderName = "IBMIAMProvider"
 
-// EndPoint is the URL of the IBM IAM endpoint
-const EndPoint = "https://iam.bluemix.net/oidc/token"
+// defaultIAMEndPoint is the default URL of the IBM IAM endpoint
+const defaultIAMEndPoint = "https://iam.bluemix.net/oidc/token"
 
 // Provider satisfies the credentials.Provider interface, and is a client to
 // retrieve credentials from IBM IAM endpoint.
@@ -26,6 +26,9 @@ type Provider struct {
 
 	apiKey            string
 	serviceInstanceID string
+
+	// IAMEndpoint
+	IAMEndpoint string
 
 	// ExpiryWindow will allow the credentials to trigger refreshing prior to
 	// the credentials actually expiring. This is beneficial so race conditions
@@ -41,10 +44,11 @@ type Provider struct {
 
 // NewProviderClient returns a credentials Provider for retrieving IBM IAM
 // credentials from IBM IAM endpoint.
-func NewProviderClient(apiKey, serviceInstanceID string) credentials.Provider {
+func NewProviderClient(apiKey, serviceInstanceID, iamEndpoint string) credentials.Provider {
 	p := &Provider{
 		serviceInstanceID: serviceInstanceID,
 		apiKey:            apiKey,
+		IAMEndpoint:       iamEndpoint,
 	}
 
 	return p
@@ -52,8 +56,8 @@ func NewProviderClient(apiKey, serviceInstanceID string) credentials.Provider {
 
 // NewCredentialsClient returns a Credentials wrapper for retrieving credentials
 // from IBM IAM endpoint.
-func NewCredentialsClient(apiKey, serviceInstanceID string) *credentials.Credentials {
-	return credentials.NewTypedCredentials(NewProviderClient(apiKey, serviceInstanceID), "ibm-iam")
+func NewCredentialsClient(apiKey, serviceInstanceID, iamEndpoint string) *credentials.Credentials {
+	return credentials.NewTypedCredentials(NewProviderClient(apiKey, serviceInstanceID, iamEndpoint), "ibm-iam")
 }
 
 // IsExpired returns true if the credentials retrieved are expired, or not yet
@@ -86,7 +90,13 @@ type getCredentialsOutput struct {
 }
 
 func (p *Provider) getCredentials() (*getCredentialsOutput, error) {
-	resp, err := http.PostForm(EndPoint,
+	var IAMEndpointURL string
+	if p.IAMEndpoint != "" {
+		IAMEndpointURL = p.IAMEndpoint + "/oidc/token"
+	} else {
+		IAMEndpointURL = defaultIAMEndPoint
+	}
+	resp, err := http.PostForm(IAMEndpointURL,
 		url.Values{
 			"grant_type":    {"urn:ibm:params:oauth:grant-type:apikey"},
 			"response_type": {"cloud_iam"},
